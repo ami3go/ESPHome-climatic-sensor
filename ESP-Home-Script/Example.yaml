@@ -1,0 +1,123 @@
+# Project:  ESP8266-ESPHome-home-climatic-sensor
+# Sensors: aht10, BMP280
+# Board:  ESP8266 - ESP01s
+# Author: alexandr.chasnyk@gmail.com
+# No-Wires-Lab 
+
+esphome:
+  name: temp-3 # Enter here name, this will be displays in ESPHome and home assistant
+  comment: kitchen temperasture sensor  # Just an option, desctibe location if you habve multuple sensors
+  area: kitchen # This is for HomeAssistance help automatically map location 
+
+# Deep sleep desible, used only for firmware update
+# to use deep sleep PCB modification is required 
+  on_boot:
+    priority: -100.0
+    then:
+      - script.execute: deep_sleep_evaluation
+
+esp8266:
+  board: esp01_1m
+
+
+deep_sleep:
+  id: deep_sleep_enabled
+  sleep_duration: 120sec  # sleep ducation. Could be changed according to your needs.
+                          # please don't use less then 60s, this will affect temperature due to self heating. 
+
+binary_sensor:
+  - platform: homeassistant
+    id: disable_deepsleep
+    entity_id: input_boolean.disable_deepsleep
+
+# Actual deep sleep designle script. Nothing to modify here 
+script:
+  - id: deep_sleep_evaluation
+    mode: queued
+    then:
+      - delay: 20s
+      - if:
+          condition:
+            binary_sensor.is_on: disable_deepsleep
+          then:
+            - logger.log: 'Deep Sleep Disabled'
+          else:
+            - deep_sleep.enter: deep_sleep_enabled
+      - script.execute: deep_sleep_evaluation
+
+# I2C GPIO setting. Nothing to modify here.
+i2c:
+  sda: GPIO0
+  scl: GPIO2
+  scan: true
+  frequency: 10kHz
+
+# Enable logging
+logger:
+
+
+
+
+wifi:
+  # default settings 
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # power reduction setting
+  power_save_mode: HIGH # LIGH
+  fast_connect: true
+  output_power: 10dB 
+  
+  # Edit this section accrdoing to your network setting 
+  # Static IP help tp save some more power
+  manual_ip:
+    static_ip: 192.168.0.10 # replace with with your 
+    gateway: 192.168.0.1
+    subnet: 255.255.255.0
+    dns1: 192.168.0.1
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  # this will generate automatically so no change here 
+  # ap:
+  #  ssid: "Temp-3 Fallback Hotspot"
+  #  password: "L0ASx7l4ESQM"
+
+captive_portal:
+
+#
+# Sensors configuration 
+# Example configuration entry
+# Note: field "name" is resposible for entry name in HomeAssistant 
+sensor:
+  - platform: aht10
+    temperature:
+      name: "Temperature"
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      state_class: "measurement"
+    humidity:
+      name: "Humidity"
+      device_class: "humidity"
+      unit_of_measurement: "%"
+    update_interval: 10s
+  
+  - platform: bmp280
+    iir_filter: 16x
+    temperature:
+      name: "Temperature2"
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      state_class: "measurement"
+      oversampling: 16x
+    pressure:
+      name: "Outside Pressure2"
+      device_class: "pressure"
+      unit_of_measurement: "hPa"
+      oversampling: 16x
+    address: 0x77
+    update_interval: 10s 
+
+#project:
+#    name: "alex home lab"
+#    version: "0.1.0"     
